@@ -10,6 +10,7 @@
 		FA0000030000000000000001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FA0000020000000000000001 /* FluidAudio */; };
 		SP0000030000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = SP0000020000000000000001 /* Sparkle */; };
 		FA10000B0000000000000001 /* CoreMLTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA10000A0000000000000001 /* CoreMLTranscriptionEngine.swift */; };
+		FA10000F0000000000000001 /* TranscriptCleanupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA10000E0000000000000001 /* TranscriptCleanupService.swift */; };
 		FA10000D0000000000000001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FA10000C0000000000000001 /* FluidAudio */; };
 /* End PBXBuildFile section */
 
@@ -17,6 +18,7 @@
 		BCFDA99F2EC2EDEC0065341A /* JustSpeak.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JustSpeak.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA1000010000000000000001 /* JustSpeakPerformanceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JustSpeakPerformanceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA10000A0000000000000001 /* CoreMLTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JustSpeak/CoreMLTranscriptionEngine.swift; sourceTree = SOURCE_ROOT; };
+		FA10000E0000000000000001 /* TranscriptCleanupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JustSpeak/TranscriptCleanupService.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -206,6 +208,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FA10000B0000000000000001 /* CoreMLTranscriptionEngine.swift in Sources */,
+				FA10000F0000000000000001 /* TranscriptCleanupService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -385,7 +388,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 130;
+				CURRENT_PROJECT_VERSION = 150;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -407,7 +410,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zyu.just-speak;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
