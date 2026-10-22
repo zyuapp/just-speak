@@ -59,7 +59,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let transcriptHistoryMenu = NSMenu()
     private let audioInputMenu = NSMenu()
     private var shortcutMenuItem: NSMenuItem?
-    private var transcriptCleanupMenuItem: NSMenuItem?
     private var transcriptDelivery: Task<Void, Never>?
     private var subscriptions = Set<AnyCancellable>()
     private static let selectedDeviceKey = "selectedAudioInputDevice"
@@ -72,7 +71,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         migrateLegacyPreferencesIfNeeded()
         migrateSelectedAudioInputPreferenceIfNeeded()
         observeShortcutSettings()
-        observeTranscriptCleanupSettings()
         setupStatusItem()
         setupMenus()
 #if !LOCAL_BUILD
@@ -183,7 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(audioInputItem)
 
         menu.addItem(NSMenuItem.separator())
-        addTranscriptCleanupMenuItems(to: menu)
+        addTranscriptCleanupMenuItem(to: menu)
 
 #if !LOCAL_BUILD
         menu.addItem(NSMenuItem.separator())
@@ -200,41 +198,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshAudioInputMenu()
     }
 
-    private func addTranscriptCleanupMenuItems(to menu: NSMenu) {
-        let toggleItem = NSMenuItem(
-            title: "Clean Up with Claude",
-            action: #selector(toggleTranscriptCleanup),
-            keyEquivalent: ""
-        )
-        toggleItem.target = self
-        toggleItem.state = transcriptCleanupSettings.isEnabled ? .on : .off
-        menu.addItem(toggleItem)
-        transcriptCleanupMenuItem = toggleItem
-
+    private func addTranscriptCleanupMenuItem(to menu: NSMenu) {
         let settingsItem = NSMenuItem(
-            title: "Claude Cleanup Settings…",
+            title: "Claude Cleanup…",
             action: #selector(openTranscriptCleanupSettings),
             keyEquivalent: ""
         )
         settingsItem.target = self
         menu.addItem(settingsItem)
-    }
-
-    private func observeTranscriptCleanupSettings() {
-        transcriptCleanupSettings.$isEnabled
-            .dropFirst()
-            .sink { [weak self] isEnabled in
-                self?.transcriptCleanupMenuItem?.state = isEnabled ? .on : .off
-            }
-            .store(in: &subscriptions)
-    }
-
-    @objc private func toggleTranscriptCleanup() {
-        guard transcriptCleanupSettings.hasAPIKey else {
-            openTranscriptCleanupSettings()
-            return
-        }
-        transcriptCleanupSettings.isEnabled.toggle()
     }
 
     @objc private func openTranscriptCleanupSettings() {
