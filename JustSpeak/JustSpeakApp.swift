@@ -39,17 +39,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let recordingOverlay = RecordingOverlayController()
     private let recordingCuePlayer = RecordingCuePlayer()
     private let systemAudioSilencer = SystemAudioSilencer()
-    private let transcriptCleanupSettings = TranscriptCleanupSettings()
-    private let transcriptCleanupService = TranscriptCleanupService()
 #if !LOCAL_BUILD
     private let updateController = UpdateController()
 #endif
     private lazy var shortcutSettingsWindowController = ShortcutSettingsWindowController(
         store: shortcutStore,
         captureController: shortcutCaptureController
-    )
-    private lazy var transcriptCleanupWindowController = TranscriptCleanupSettingsWindowController(
-        settings: transcriptCleanupSettings
     )
     private var isRecordingHotkeyHeld = false
     private var recordingAttemptID: UUID?
@@ -59,7 +54,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let transcriptHistoryMenu = NSMenu()
     private let audioInputMenu = NSMenu()
     private var shortcutMenuItem: NSMenuItem?
-    private var transcriptDelivery: Task<Void, Never>?
     private var subscriptions = Set<AnyCancellable>()
     private static let selectedDeviceKey = "selectedAudioInputDevice"
     private static let didMigratePreferencesKey = "didMigrateLegacyPreferences"
@@ -180,9 +174,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         audioInputItem.submenu = audioInputMenu
         menu.addItem(audioInputItem)
 
-        menu.addItem(NSMenuItem.separator())
-        addTranscriptCleanupMenuItem(to: menu)
-
 #if !LOCAL_BUILD
         menu.addItem(NSMenuItem.separator())
         menu.addItem(updateController.menuItem)
@@ -196,20 +187,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         guard menu === audioInputMenu else { return }
         refreshAudioInputMenu()
-    }
-
-    private func addTranscriptCleanupMenuItem(to menu: NSMenu) {
-        let settingsItem = NSMenuItem(
-            title: "Claude Cleanup…",
-            action: #selector(openTranscriptCleanupSettings),
-            keyEquivalent: ""
-        )
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-    }
-
-    @objc private func openTranscriptCleanupSettings() {
-        transcriptCleanupWindowController.present()
     }
 
     private func refreshTranscriptHistoryMenu() {
@@ -541,18 +518,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         recordingAttemptID = attemptID
         isRecordingHotkeyHeld = true
         updateStatusIcon(recording: true)
-        prewarmTranscriptCleanupIfEnabled()
 
         startRecording(
             targetApplication: targetApplication,
             attemptID: attemptID
         )
-    }
-
-    private func prewarmTranscriptCleanupIfEnabled() {
-        guard transcriptCleanupSettings.isEnabled,
-              transcriptCleanupSettings.hasAPIKey else { return }
-        transcriptCleanupService.prewarmConnection()
     }
 
     private func startRecording(
@@ -774,9 +744,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Task {
             do {
                 let text = try await transcriptionService.transcribe(audioFile: url)
-                AudioRecorder.removeRecordingFile(at: url)
-                await handleTranscriptionResult(text)
-                updateStatusIcon()
+
+                await MainActor.run {
+                    updateStatusIcon()
+                    handleTranscriptionResult(text)
+                    AudioRecorder.removeRecordingFile(at: url)
+                }
             } catch {
                 await MainActor.run {
                     updateStatusIcon(error: true)
@@ -796,7 +769,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    private func handleTranscriptionResult(_ text: String) async {
+    private func handleTranscriptionResult(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmed.isEmpty else {
@@ -805,44 +778,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         print("Transcription: \(trimmed)")
-        let previousDelivery = transcriptDelivery
-        let delivery = Task {
-            let output = await cleanedTranscript(trimmed)
-            await previousDelivery?.value
-            deliverTranscript(output)
-        }
-        transcriptDelivery = delivery
-        await delivery.value
-    }
-
-    private func cleanedTranscript(_ text: String) async -> String {
-        guard transcriptCleanupSettings.isEnabled,
-              let apiKey = transcriptCleanupSettings.apiKey else { return text }
-
-        let startTime = Date()
-        do {
-            let cleaned = try await transcriptCleanupService.cleanUp(
-                text,
-                apiKey: apiKey,
-                additionalContext: transcriptCleanupSettings.additionalContext
-            )
-            let elapsed = Date().timeIntervalSince(startTime) * 1000
-            print("Claude cleanup (\(Int(elapsed)) ms): \(cleaned)")
-            return cleaned
-        } catch {
-            print("Claude cleanup failed: \(error)")
-            showNotification(
-                title: "Claude Cleanup Failed",
-                body: "Pasted the original transcript. \(error.localizedDescription)"
-            )
-            return text
-        }
-    }
-
-    private func deliverTranscript(_ text: String) {
-        transcriptHistory.add(text)
+        transcriptHistory.add(trimmed)
         refreshTranscriptHistoryMenu()
-        clipboardManager.copyAndPaste(text)
+        clipboardManager.copyAndPaste(trimmed)
     }
 
     private func updateStatusIcon(recording: Bool = false, processing: Bool = false, downloading: Bool = false, error: Bool = false) {
