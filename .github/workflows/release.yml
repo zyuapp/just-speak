@@ -133,6 +133,12 @@ jobs:
             --maximum-deltas 0 \
             --download-url-prefix "https://github.com/zyuapp/just-speak/releases/download/$GITHUB_REF_NAME/" \
             dist
+          # Created after generate_appcast so Sparkle only sees the DMG.
+          zip_staging="$RUNNER_TEMP/JustSpeakZip"
+          mkdir "$zip_staging"
+          ditto "$app" "$zip_staging/Just Speak.app"
+          ditto -c -k --keepParent "$zip_staging/Just Speak.app" dist/JustSpeak.zip
+          (cd dist && shasum -a 256 JustSpeak.zip > JustSpeak.zip.sha256)
 
       - name: Publish GitHub release
         shell: bash
@@ -147,5 +153,7 @@ jobs:
               --verify-tag
           gh release upload "$GITHUB_REF_NAME" \
             dist/*.dmg \
+            dist/JustSpeak.zip \
+            dist/JustSpeak.zip.sha256 \
             dist/appcast.xml \
             --clobber

@@ -24,7 +24,16 @@ A lightweight macOS menu bar app for fully offline voice dictation. Hold your re
 
 ### Download Pre-built App
 
-Install with Homebrew Cask:
+Install the latest release with one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zyuapp/just-speak/main/install.sh | sh
+```
+
+The script verifies the download's checksum and installs the signed, notarized
+app in `/Applications` (or `~/Applications` when that is not writable).
+
+Or install with Homebrew Cask:
 
 ```bash
 brew install --cask zyuapp/tap/just-speak
