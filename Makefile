@@ -26,7 +26,7 @@ release:
 	$(MAKE) build CONFIGURATION=Release
 
 test:
-	xcodebuild -project "$(PROJECT)" -scheme JustSpeakPerformanceTests -configuration Release -derivedDataPath "$(DERIVED_DATA)" test -only-testing:JustSpeakPerformanceTests/CoreMLTranscriptionEngineTests -only-testing:JustSpeakPerformanceTests/TranscriptCleanupServiceTests
+	xcodebuild -project "$(PROJECT)" -scheme JustSpeakPerformanceTests -configuration Release -derivedDataPath "$(DERIVED_DATA)" test -only-testing:JustSpeakPerformanceTests/CoreMLTranscriptionEngineTests
 
 performance-test:
 	xcodebuild -project "$(PROJECT)" -scheme JustSpeakPerformanceTests -configuration Release -derivedDataPath "$(DERIVED_DATA)" test
