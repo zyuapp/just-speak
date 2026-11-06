@@ -53,6 +53,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var accessibilityMenuItem: NSMenuItem?
     private let transcriptHistoryMenu = NSMenu()
     private let audioInputMenu = NSMenu()
+    private let vocabularyStore = VocabularyStore()
+    private let vocabularyMenu = NSMenu()
+    private var vocabularyStatus = VocabularyStatus.preparing
     private var shortcutMenuItem: NSMenuItem?
     private var subscriptions = Set<AnyCancellable>()
     private static let selectedDeviceKey = "selectedAudioInputDevice"
@@ -71,6 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateController.start()
 #endif
         setupHotkeyManager()
+        setupVocabulary()
         setupTranscriptionService()
         restoreSelectedDevice()
         previewRecordingOverlayIfRequested()
@@ -173,6 +177,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshAudioInputMenu()
         audioInputItem.submenu = audioInputMenu
         menu.addItem(audioInputItem)
+
+        let vocabularyItem = NSMenuItem(title: "Vocabulary", action: nil, keyEquivalent: "")
+        vocabularyItem.submenu = vocabularyMenu
+        menu.addItem(vocabularyItem)
+        refreshVocabularyMenu()
 
 #if !LOCAL_BUILD
         menu.addItem(NSMenuItem.separator())
@@ -433,6 +442,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 switch result {
                 case .success:
                     print("Model downloaded and initialized successfully")
+                    self?.applyVocabulary()
                     self?.showNotification(
                         title: "Setup Complete",
                         body: "Parakeet model ready for transcription"
@@ -457,6 +467,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try await transcriptionService.initialize()
                 print("Transcription service initialized")
                 updateStatusIcon(downloading: false)
+                applyVocabulary()
             } catch {
                 print("Failed to initialize transcription service: \(error)")
                 updateStatusIcon(error: true)
@@ -466,6 +477,89 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 )
             }
         }
+    }
+
+    private func setupVocabulary() {
+        vocabularyStore.onChange = { [weak self] in
+            self?.refreshVocabularyMenu()
+            self?.applyVocabulary()
+        }
+        vocabularyStore.start()
+    }
+
+    private func applyVocabulary() {
+        guard transcriptionService.isReady else { return }
+        let entries = vocabularyStore.entries
+        vocabularyStatus = .preparing
+        refreshVocabularyMenu()
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                guard let activeCount = try await transcriptionService.updateVocabulary(entries) else {
+                    return
+                }
+                vocabularyStatus = .active(activeCount)
+            } catch {
+                print("Failed to apply vocabulary: \(error)")
+                vocabularyStatus = .failed(error.localizedDescription)
+            }
+            refreshVocabularyMenu()
+        }
+    }
+
+    private func refreshVocabularyMenu() {
+        vocabularyMenu.removeAllItems()
+
+        let statusItem = NSMenuItem(title: vocabularyStatusTitle, action: nil, keyEquivalent: "")
+        if case .failed(let message) = vocabularyStatus {
+            statusItem.toolTip = message
+        }
+        statusItem.isEnabled = false
+        vocabularyMenu.addItem(statusItem)
+
+        vocabularyMenu.addItem(NSMenuItem.separator())
+        addVocabularyAction("Copy Prompt for AI Agent", #selector(copyVocabularyPrompt))
+        addVocabularyAction("Show in Finder", #selector(revealVocabularyFile))
+    }
+
+    private var vocabularyStatusTitle: String {
+        let count = vocabularyStore.entries.count
+        guard count > 0 else { return "No Terms" }
+
+        switch vocabularyStatus {
+        case .preparing:
+            return "Preparing \(Self.termCount(count))…"
+        case .active(let active) where active == count:
+            return "\(Self.termCount(count)) Active"
+        case .active(let active):
+            return "\(active) of \(Self.termCount(count)) Active"
+        case .failed:
+            return "Vocabulary Unavailable"
+        }
+    }
+
+    private static func termCount(_ count: Int) -> String {
+        count == 1 ? "1 Term" : "\(count) Terms"
+    }
+
+    private func addVocabularyAction(_ title: String, _ action: Selector) {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        vocabularyMenu.addItem(item)
+    }
+
+    @objc private func copyVocabularyPrompt() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(vocabularyStore.agentPrompt, forType: .string)
+        showNotification(
+            title: "Vocabulary Prompt Copied",
+            body: "Paste it into your AI agent and list the terms to add."
+        )
+    }
+
+    @objc private func revealVocabularyFile() {
+        vocabularyStore.revealInFinder()
     }
 
     @objc private func quit() {
@@ -803,4 +897,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             button.image?.isTemplate = true
         }
     }
+}
+
+/// Vocabulary state shown in the menu. Terms are not applied until the CTC model is downloaded and loaded.
+private enum VocabularyStatus {
+    case preparing
+    case active(Int)
+    case failed(String)
 }

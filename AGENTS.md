@@ -36,6 +36,8 @@ Swift Package Manager resolves the pinned FluidAudio dependency during the first
 - Parakeet model path: `~/Library/Application Support/FluidAudio/Models/parakeet-tdt-0.6b-v2-coreml/`
 - Recordings are written to `FileManager.default.temporaryDirectory` as `recording_<timestamp>.wav`
 - Temporary recordings are deleted after transcription or cancellation
+- Vocabulary list: `~/Library/Application Support/JustSpeak/Vocabulary.txt` (local only; reloaded on change)
+- Vocabulary CTC model path: `~/Library/Application Support/FluidAudio/Models/parakeet-ctc-110m-coreml/` (downloaded only once the list has a usable term)
 
 ## Architecture
 

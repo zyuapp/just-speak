@@ -1,4 +1,5 @@
 import AVFoundation
+import FluidAudio
 import Foundation
 import XCTest
 
@@ -64,6 +65,89 @@ final class TranscriptionPerformanceTests: XCTestCase {
         )
     }
 
+    func testVocabularyBoostingKeepsTwentyTimesRealTime() async throws {
+        let fixture = try SpeechPerformanceFixture.make()
+        defer { fixture.remove() }
+
+        let engine = CoreMLTranscriptionEngine()
+        try await engine.downloadAndInitialize()
+        try await engine.updateVocabulary([
+            VocabularyEntry(term: "NVIDIA", soundsLike: ["in video"]),
+            VocabularyEntry(term: "Kubernetes", soundsLike: []),
+            VocabularyEntry(term: "PyTorch", soundsLike: []),
+        ])
+        _ = try await transcribe(fixture.audioURL, using: engine)
+
+        var slowestFactor = 0.0
+        for iteration in 1...2 {
+            let measurement = try await transcribe(fixture.audioURL, using: engine)
+            XCTAssertTrue(
+                measurement.text.lowercased().contains(fixture.requiredEnding),
+                "Vocabulary boosting must not alter unrelated speech. Transcript: \(measurement.text)"
+            )
+            slowestFactor = max(slowestFactor, measurement.elapsed / fixture.duration)
+            print(
+                String(
+                    format: "Vocabulary iteration %d: %.3fs for %.1fs audio (%.1fx real-time)",
+                    iteration,
+                    measurement.elapsed,
+                    fixture.duration,
+                    fixture.duration / measurement.elapsed
+                )
+            )
+        }
+
+        XCTAssertLessThanOrEqual(
+            slowestFactor,
+            steadyStateMaximumRealTimeFactor,
+            performanceFailure(
+                phase: "vocabulary steady state",
+                actual: slowestFactor,
+                limit: steadyStateMaximumRealTimeFactor
+            )
+        )
+    }
+
+    func testVocabularyCorrectsMisheardTermsAndKeepsPunctuation() async throws {
+        let fixture = try SpeechPerformanceFixture.makeVocabulary()
+        defer { fixture.remove() }
+
+        let engine = CoreMLTranscriptionEngine()
+        try await engine.downloadAndInitialize()
+        let plain = try await engine.transcribe(audioFile: fixture.audioURL)
+        try await engine.updateVocabulary([
+            VocabularyEntry(term: "Supabase", soundsLike: []),
+            VocabularyEntry(term: "Hono", soundsLike: []),
+        ])
+        let boosted = try await engine.transcribe(audioFile: fixture.audioURL)
+
+        XCTAssertFalse(plain.contains("Supabase"), "Fixture no longer exercises a misheard term: \(plain)")
+        XCTAssertTrue(boosted.contains("Supabase,"), "Expected the corrected term with its comma: \(boosted)")
+        XCTAssertTrue(boosted.contains("Hono"), "Expected the corrected term: \(boosted)")
+    }
+
+    func testCtcLogProbsMatchFluidAudioSpotter() async throws {
+        let fixture = try SpeechPerformanceFixture.makeVocabulary()
+        defer { fixture.remove() }
+
+        let models = try await CtcModels.downloadAndLoad()
+        let samples = try AudioConverter(sampleRate: 16_000).resampleAudioFile(fixture.audioURL)
+        let reference = try await CtcKeywordSpotter(models: models, blankId: models.vocabulary.count)
+            .spotKeywordsWithLogProbs(
+                audioSamples: samples,
+                customVocabulary: CustomVocabularyContext(terms: []),
+                minScore: nil
+            )
+        let fast = try await CtcLogProbs.compute(samples: samples, models: models)
+
+        XCTAssertEqual(fast.frames.count, reference.logProbs.count)
+        XCTAssertEqual(fast.frameDuration, reference.frameDuration, accuracy: 1e-9)
+        let largestDifference = zip(fast.frames, reference.logProbs)
+            .flatMap { zip($0, $1).map { abs($0 - $1) } }
+            .max() ?? .infinity
+        XCTAssertLessThan(largestDifference, 1e-3)
+    }
+
     func testCachedModelTranscribesSubsecondSpeech() async throws {
         let fixture = try SpeechPerformanceFixture.makeShort()
         defer { fixture.remove() }
@@ -127,6 +211,15 @@ private struct SpeechPerformanceFixture {
             speakingRate: 200,
             requiredEnding: requiredEnding,
             durationRange: 55..<80
+        )
+    }
+
+    static func makeVocabulary() throws -> SpeechPerformanceFixture {
+        try make(
+            script: "We moved auth to Supabase, put the cluster behind Tailscale, and call the API from Hono.",
+            speakingRate: 200,
+            requiredEnding: "hono",
+            durationRange: 3..<15
         )
     }
 

@@ -84,6 +84,10 @@ final class TranscriptionService {
         }
     }
 
+    func updateVocabulary(_ entries: [VocabularyEntry]) async throws -> Int? {
+        try await engine.updateVocabulary(entries)
+    }
+
     func transcribe(audioFile: URL) async throws -> String {
         guard ready else {
             throw TranscriptionServiceError.modelNotDownloaded

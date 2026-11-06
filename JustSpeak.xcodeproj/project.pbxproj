@@ -10,6 +10,8 @@
 		FA0000030000000000000001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FA0000020000000000000001 /* FluidAudio */; };
 		SP0000030000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = SP0000020000000000000001 /* Sparkle */; };
 		FA10000B0000000000000001 /* CoreMLTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA10000A0000000000000001 /* CoreMLTranscriptionEngine.swift */; };
+		FA10000F0000000000000001 /* VocabularyList.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA10000E0000000000000001 /* VocabularyList.swift */; };
+		FA1000110000000000000001 /* CtcLogProbs.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA1000100000000000000001 /* CtcLogProbs.swift */; };
 		FA10000D0000000000000001 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FA10000C0000000000000001 /* FluidAudio */; };
 /* End PBXBuildFile section */
 
@@ -17,6 +19,8 @@
 		BCFDA99F2EC2EDEC0065341A /* JustSpeak.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JustSpeak.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA1000010000000000000001 /* JustSpeakPerformanceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JustSpeakPerformanceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA10000A0000000000000001 /* CoreMLTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JustSpeak/CoreMLTranscriptionEngine.swift; sourceTree = SOURCE_ROOT; };
+		FA10000E0000000000000001 /* VocabularyList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JustSpeak/VocabularyList.swift; sourceTree = SOURCE_ROOT; };
+		FA1000100000000000000001 /* CtcLogProbs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JustSpeak/CtcLogProbs.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -206,6 +210,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				FA10000B0000000000000001 /* CoreMLTranscriptionEngine.swift in Sources */,
+				FA10000F0000000000000001 /* VocabularyList.swift in Sources */,
+				FA1000110000000000000001 /* CtcLogProbs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
